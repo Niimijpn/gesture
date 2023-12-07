@@ -1,50 +1,51 @@
-import mediapipe as mp
+#!/usr/bin/env python
+import PySimpleGUI as sg
 import cv2
+import numpy as np
 
-mp_drawing = mp.solutions.drawing_utils
-mp_holistic = mp.solutions.holistic
+"""
+Demo program that displays a webcam using OpenCV
+"""
 
-cap = cv2.VideoCapture(0)
-with mp_holistic.Holistic(min_detection_confidence=.5, min_tracking_confidence=.5) as holistic:
 
-    while cap.isOpened():
-        ret, frame = cap.read()
+def main():
 
-        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) #BGRからRGBに変換
-        
-        results = holistic.process(image) # 検出
-   
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # RGBからBGRに変換
-        
-#        # 顔
-#        mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_CONTOURS,
-#                                 mp_drawing.DrawingSpec(color=(255,0,0), thickness=2, circle_radius=1),
-#                                 mp_drawing.DrawingSpec(color=(255,255,255), thickness=2, circle_radius=1)
-#                                 )
-        
-        # 右手
-        mp_drawing.draw_landmarks(image, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS,
-                                 mp_drawing.DrawingSpec(color=(255,0,0), thickness=2, circle_radius=1),
-                                 mp_drawing.DrawingSpec(color=(255,255,255), thickness=2, circle_radius=1)
-                                 )
-        
-#        # 左手
-#        mp_drawing.draw_landmarks(image, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS,
-#                                 mp_drawing.DrawingSpec(color=(255,0,0), thickness=2, circle_radius=1),
-#                                 mp_drawing.DrawingSpec(color=(255,255,255), thickness=2, circle_radius=1)
-#                                 )
-#        
-#        # 姿勢
-#        mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS,
-#                                 mp_drawing.DrawingSpec(color=(255,0,0), thickness=2, circle_radius=1),
-#                                 mp_drawing.DrawingSpec(color=(255,255,255), thickness=2, circle_radius=1)
-#                                 )
-        
-        cv2.imshow("Holistic Model Detections", image)
+    sg.theme('Black')
 
-        # qを押したら終了する
-        if cv2.waitKey(10) & 0xFF == ord("q"):
-            break
-            
-cap.release()
-cv2.destroyAllWindows()
+    # define the window layout
+    layout = [[sg.Text('OpenCV Demo', size=(40, 1), justification='center', font='Helvetica 20')],
+              [sg.Image(filename='', key='image')],
+              [sg.Button('Record', size=(10, 1), font='Helvetica 14'),
+               sg.Button('Stop', size=(10, 1), font='Any 14'),
+               sg.Button('Exit', size=(10, 1), font='Helvetica 14'), ]]
+
+    # create the window and show it without the plot
+    window = sg.Window('Demo Application - OpenCV Integration',
+                       layout, location=(800, 400))
+
+    # ---===--- Event LOOP Read and display frames, operate the GUI --- #
+    cap = cv2.VideoCapture(0)
+    recording = False
+
+    while True:
+        event, values = window.read(timeout=20)
+        if event == 'Exit' or event == sg.WIN_CLOSED:
+            return
+
+        elif event == 'Record':
+            recording = True
+
+        elif event == 'Stop':
+            recording = False
+            img = np.full((480, 640), 255)
+            # this is faster, shorter and needs less includes
+            imgbytes = cv2.imencode('.png', img)[1].tobytes()
+            window['image'].update(data=imgbytes)
+
+        if recording:
+            ret, frame = cap.read()
+            imgbytes = cv2.imencode('.png', frame)[1].tobytes()  # ditto
+            window['image'].update(data=imgbytes)
+
+
+main()

@@ -4,7 +4,7 @@ import os  # OS依存の操作（Pathやフォルダ操作など）用ライブ�
 import numpy as np  # numpyのインポート
 import cv2  # OpenCV（python版）のインポート
 import mediapipe as mp  # mediapipeのインクルード
-
+import time
 
 # 画像リサイズ関数（高さが指定した値になるようにリサイズ (アスペクト比を固定)）
 def scale_to_height(img, height):
@@ -13,7 +13,7 @@ def scale_to_height(img, height):
     dst = cv2.resize(img, dsize=(width, height))
 
     return dst
-
+BAR_MAX = 1000
 
 # ---- 顔認識エンジンセット ----
 mp_drawing = mp.solutions.drawing_utils
@@ -25,29 +25,35 @@ isOpened = 0  # カメラがオープンになっているかどうかのフラ�
 isRun = 0  # 認識On/Offフラグ（Onの時に認識実行）
 
 # ステップ2. デザインテーマの設定
-sg.theme("DarkTeal7")
+sg.theme("Default1")
+
+
 
 # ステップ3. ウィンドウの部品とレイアウト
 layout = [
-    [sg.Text("カメラ")],
-    [sg.Button("カメラ", key="camera")],
-    [sg.Image(filename="", size=display_size, key="-input_image-")],
-    [sg.Button("動画保存", key="save"), sg.Button("終了", key="exit")],
-    [sg.Output(size=(80, 10))],
+    [sg.Text('Media Pipe', size=(40, 1), justification='center', font='Helvetica 20')],
+    [sg.Image(filename="", key="-input_image-")],
+    [sg.Button('Record', key="camera", size=(10, 1), font='Helvetica 14'),
+    sg.Button('Save', key="save", size=(10, 1), font='Any 14'),
+    sg.Button('Exit', key="exit", size=(10, 1), font='Helvetica 14'), ],
     [
         sg.Text("ランドマークの表示", size=(15, 1)),
         sg.Combo(("ON", "OFF"), default_value="ON", size=(5, 1), key="landmark"),
     ],
 ]
 
+
 # ステップ4. ウィンドウの生成
 window = sg.Window("人体を認識するツール", layout, location=(400, 20))
 
 # ステップ5. カメラ，mediapipeの初期設定
-# cap = cv2.VideoCapture(0)
+cap = None  # カメラを初期化
+
 with mp_holistic.Holistic(
     min_detection_confidence=0.5, min_tracking_confidence=0.5
 ) as holistic:
+    out = None  # VideoWriterを初期化
+
     # ステップ6. イベントループ
     while True:
         event, values = window.read(timeout=10)
@@ -56,27 +62,42 @@ with mp_holistic.Holistic(
             break
 
         if event == "camera":  # 「カメラ」ボタンが押された時の処理
-            print("Camera Open")
-            cap = cv2.VideoCapture(0)  # 任意のカメラ番号に変更する
-            isOpened, orig_img = cap.read()
-            if isOpened:  # 正常にフレームを読み込めたら
-                fps = cap.get(cv2.CAP_PROP_FPS)
-                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                print("Frame size = " + str(orig_img.shape))
-                # 表示用に画像を固定サイズに変更（大きい画像を入力した時に認識ボタンなどが埋もれないように）
-                disp_img = scale_to_height(orig_img, display_size[1])
-                # 表示用画像データをPNG（１画素４バイト）に変換し，１次元配列（バイナリ形式）に入れ直し
-                imgbytes = cv2.imencode(".png", disp_img)[1].tobytes()
-                # ウィンドウへ表示
-                window["-input_image-"].update(data=imgbytes)
+            if cap is None:
+                print("Camera Open")
+                cap = cv2.VideoCapture(0)  # 任意のカメラ番号に変更する
+                isOpened, orig_img = cap.read()
+                if isOpened:  # 正常にフレームを読み込めたら
+                    fps = cap.get(cv2.CAP_PROP_FPS)
+                    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+                    out = cv2.VideoWriter('out.mp4', fourcc, fps, (width, height))
+                    print("Frame size = " + str(orig_img.shape))
+                    print("fps=",cap.get(cv2.CAP_PROP_FPS))
+                    # 表示用に画像を固定サイズに変更（大きい画像を入力した時に認識ボタンなどが埋もれないように）
+                    disp_img = scale_to_height(orig_img, display_size[1])
+                    # 表示用画像データをPNG（１画素４バイト）に変換し，１次元配列（バイナリ形式）に入れ直し
+                    imgbytes = cv2.imencode(".png", disp_img)[1].tobytes()
+                    # ウィンドウへ表示
+                    window["-input_image-"].update(data=imgbytes)
+                else:
+                    print("Cannot capture a frame image")
+        elif event == "save":  # 「保存」ボタンが押されたときの処理
+            if out is not None:
+                out.release()  # VideoWriterを解放
+                print("Write movie -> out.mp4")
+                out = None  # VideoWriterを初期化
             else:
-                print("Cannot capture a frame image")
-
-        if isOpened == 1:
+                print("Start saving")
+        elif isOpened == 1:
             # ---- フレーム読み込み ----
             ret, frame = cap.read()
             if ret:  # 正常にフレームを読み込めたら
+                if out is not None:
+                    # VideoWriterでムービー書き出し処理を書く
+                    time.sleep(1 / fps)
+                    out.write(frame)
+
                 image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # BGRからRGBに変換
                 results = holistic.process(image)  # 検出
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)  # RGBからBGRに変換
@@ -140,10 +161,9 @@ with mp_holistic.Holistic(
                 # ウィンドウへ表示
                 window["-input_image-"].update(data=imgbytes)
 
-        if event == "save":  # 「保存」ボタンが押されたときの処理
-            print("Write movie -> ")
-            # VideoWriterでムービー書き出し処理を書く
-            # 「保存」ボタンをもう一度押したら停止するようにする
-
-cap.release()
+# カメラとウィンドウを解放
+if cap is not None:
+    cap.release()
+if out is not None:
+    out.release()
 window.close()
