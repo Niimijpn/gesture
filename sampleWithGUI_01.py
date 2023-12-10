@@ -30,7 +30,7 @@ sg.theme("Default1")
 
 
 # ステップ3. ウィンドウの部品とレイアウト
-layout = [
+column_to_be_centered = [
     [sg.Text('Media Pipe', size=(40, 1), justification='center', font='Helvetica 20')],
     [sg.Image(filename="", key="-input_image-")],
     [sg.Button('Record', key="camera", size=(10, 1), font='Helvetica 14'),
@@ -40,6 +40,12 @@ layout = [
         sg.Text("ランドマークの表示", size=(15, 1)),
         sg.Combo(("ON", "OFF"), default_value="ON", size=(5, 1), key="landmark"),
     ],
+]
+
+layout = [
+    [sg.VPush()],
+    [sg.Push(), sg.Column(column_to_be_centered,element_justification='c'), sg.Push()],
+    [sg.VPush()],
 ]
 
 
@@ -167,3 +173,5 @@ if cap is not None:
 if out is not None:
     out.release()
 window.close()
+
+# https://github.com/PySimpleGUI/PySimpleGUI/blob/master/DemoPrograms/Demo_OpenCV_Webcam.py
