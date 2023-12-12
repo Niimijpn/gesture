@@ -1,51 +1,67 @@
-#!/usr/bin/env python
-import PySimpleGUI as sg
 import cv2
+import mediapipe as mp
+import PySimpleGUI as sg
 import numpy as np
 
-"""
-Demo program that displays a webcam using OpenCV
-"""
+# MediaPipe初期化
+mp_drawing = mp.solutions.drawing_utils
+mp_hands = mp.solutions.hands
 
+# PySimpleGUIの設定
+layout = [
+    [sg.Image(filename='', key='-IMAGE-')],
+    [sg.Exit()]
+]
 
-def main():
+window = sg.Window('Hand Tracking Trajectory', layout, resizable=True, finalize=True)
+canvas_elem = window['-IMAGE-']
+canvas = canvas_elem.Widget
 
-    sg.theme('Black')
+# カメラ初期化
+cap = cv2.VideoCapture(0)
 
-    # define the window layout
-    layout = [[sg.Text('OpenCV Demo', size=(40, 1), justification='center', font='Helvetica 20')],
-              [sg.Image(filename='', key='image')],
-              [sg.Button('Record', size=(10, 1), font='Helvetica 14'),
-               sg.Button('Stop', size=(10, 1), font='Any 14'),
-               sg.Button('Exit', size=(10, 1), font='Helvetica 14'), ]]
-
-    # create the window and show it without the plot
-    window = sg.Window('Demo Application - OpenCV Integration',
-                       layout, location=(800, 400))
-
-    # ---===--- Event LOOP Read and display frames, operate the GUI --- #
-    cap = cv2.VideoCapture(0)
-    recording = False
+# 手の検出モデルの初期化
+with mp_hands.Hands(max_num_hands=1) as hands:
+    trajectory_points = []  # 指の動きの軌跡を記録するリスト
 
     while True:
         event, values = window.read(timeout=20)
-        if event == 'Exit' or event == sg.WIN_CLOSED:
-            return
 
-        elif event == 'Record':
-            recording = True
+        if event in (sg.WINDOW_CLOSED, 'Exit'):
+            break
 
-        elif event == 'Stop':
-            recording = False
-            img = np.full((480, 640), 255)
-            # this is faster, shorter and needs less includes
-            imgbytes = cv2.imencode('.png', img)[1].tobytes()
-            window['image'].update(data=imgbytes)
+        ret, frame = cap.read()
+        if not ret:
+            continue
 
-        if recording:
-            ret, frame = cap.read()
-            imgbytes = cv2.imencode('.png', frame)[1].tobytes()  # ditto
-            window['image'].update(data=imgbytes)
+        # フレームをBGRからRGBに変換
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # 手の検出
+        results = hands.process(rgb_frame)
+        
+        rgb_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
 
 
-main()
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                # 手の位置を取得
+                h, w, _ = frame.shape
+                cx, cy = int(hand_landmarks.landmark[8].x * w), int(hand_landmarks.landmark[8].y * h)
+
+                # 軌跡に座標を追加
+                trajectory_points.append((cx, cy))
+
+                # 軌跡を描画
+                if len(trajectory_points) > 1:
+                    cv2.polylines(frame, [np.array(trajectory_points, dtype=np.int32)], isClosed=False, color=(255, 0, 0), thickness=2)
+
+        # OpenCV画像をPySimpleGUIに反映
+        imgbytes = cv2.imencode('.png', frame)[1].tobytes()
+        canvas_elem.update(data=imgbytes)
+
+    window.close()
+
+# 後片付け
+cap.release()
+cv2.destroyAllWindows()
