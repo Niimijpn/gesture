@@ -21,6 +21,7 @@
 *.zip
 *.pdf
 *.mp4
+*.docx
 
 # Logs and databases #
 ######################
