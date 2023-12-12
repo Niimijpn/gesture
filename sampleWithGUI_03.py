@@ -89,6 +89,7 @@ isOpened = 0   # カメラがオープンになっているかどうかのフラ
 isWriting = 0   # 録画ON/OFF
 movie_name = 'output.mp4'
 IMAGE_PATH = "./nc73730.png"  # 画像パス
+IMAGE_PATH2 = "./circle.png"  # 画像パス
 
 # ステップ2. デザインテーマの設定
 sg.theme('DarkTeal7')
@@ -130,6 +131,7 @@ with mp_holistic.Holistic(min_detection_confidence=.5, min_tracking_confidence=.
                 frame_size = (width, height)
                 # Vtuber画像の読み込み
                 icon = load_image(IMAGE_PATH)
+                icon2 = load_image(IMAGE_PATH2)
                 # 表示用に画像を固定サイズに変更（大きい画像を入力した時に認識ボタンなどが埋もれないように）
                 disp_img = scale_to_height(orig_img, display_size[1])
                 # 表示用画像データをPNG（１画素４バイト）に変換し，１次元配列（バイナリ形式）に入れ直し
@@ -146,7 +148,18 @@ with mp_holistic.Holistic(min_detection_confidence=.5, min_tracking_confidence=.
                 image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) #BGRからRGBに変換
                 results = holistic.process(image) # 検出
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # RGBからBGRに変換
-            
+                
+                if results.right_hand_landmarks:
+                    p=results.right_hand_landmarks.landmark[8]
+                    # print(p)
+                    x = int(p.x*width) - int(icon2.shape[1]/2)
+                    y = int(p.y*height) - int(icon2.shape[1]/2)
+                    print("x = " + str(x) + ".y = " + str(y))
+                    
+                    if (0 <= y) and (y <= (height-int(icon2.shape[0]))) and (0 <= x) and (x <= (width-int(icon2.shape[1]))):
+                        image = merge_images(image, icon, x, y)
+                    
+                    
                 if(values['mozaic'] == 'あり' or values['vtuber'] == 'あり'):
                     # 顔検出セット
                     with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detection:
