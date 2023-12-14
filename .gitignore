@@ -24,6 +24,10 @@
 *.docx
 *.png
 
+# dir #
+pySimpleGUI_DemoPrg
+sample
+
 # Logs and databases #
 ######################
 *.log
