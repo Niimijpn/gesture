@@ -20,9 +20,9 @@ mp_hands = mp.solutions.hands
 # PySimpleGUIの設定
 layout_main = [
     [sg.Image(filename='', key='-IMAGE-')],
-    [sg.Button('サブ画面を表示', key="show_subWin", size=(10, 1)), 
-     sg.Exit(key="exit", size=(10, 1))],
-    [sg.Button('CLEAR', key="clear", size=(10, 1))],
+    [sg.Button('サブ画面を表示', key="-SHOW_SUB_WINDOW-", size=(10, 1)), 
+     sg.Exit(key="-EXIT-", size=(10, 1))],
+    [sg.Button('CLEAR', key="-CLEAR-", size=(10, 1))],
 ]
 
 window = sg.Window('Hand Tracking Trajectory', layout_main, resizable=True, finalize=True)
@@ -31,7 +31,20 @@ canvas = canvas_elem.Widget
 
 layout_sub = [
     [sg.Text('sub')],
-    [sg.Button('サブ画面を閉じる', key="close_subWin", size=(10, 1))]
+    [sg.Button('サブ画面を閉じる', key="-CLOSE_SUB_WINDOW-", size=(10, 1))],
+    [sg.Slider(range=(1, 30),
+               key="-SLIDER-",
+               default_value=5,
+               size=(20, 15),
+               orientation='horizontal',
+               font=('Helvetica', 12))],
+    [sg.Button('ペンの太さを更新', key="-UPDATE_SLIDER_VALUE-", size=(15, 1))],
+    [sg.Text('色', size=(10, 1))],
+    [sg.Button('赤', key="-RED-", size=(10, 1)),
+     sg.Button('緑', key="-GREEN-", size=(10, 1)),
+     sg.Button('青', key="-BLUE-", size=(10, 1)),
+     sg.Button('黒', key="-BLACK-", size=(10, 1)),
+     sg.Button('白', key="-WHITE-", size=(10, 1))],
 ]
 
 window_sub = sg.Window('サブ画面', layout_sub, finalize=True)
@@ -43,20 +56,35 @@ cap = cv2.VideoCapture(0)
 # 手の検出モデルの初期化
 with mp_hands.Hands(max_num_hands=1) as hands:
     trajectories = []  # 複数の軌跡を管理するリスト
+    current_trajectory = []  # 現在の軌跡を管理するリスト
+    slider_value = 5  # 初期値を設定
+    col = [0,0,0]
 
     while True:
         event, values = window.read(timeout=20)
         event_sub, values_sub,  = window_sub.read(timeout=20)
 
-        if event in (sg.WINDOW_CLOSED, "exit"):
+        if event in (sg.WINDOW_CLOSED, "-EXIT-"):
             break
-        elif event == "show_subWin":
+        elif event == "-SHOW_SUB_WINDOW-":
             window_sub.un_hide()
-        elif event_sub == "close_subWin":
+        elif event_sub == "-CLOSE_SUB_WINDOW-":
             window_sub.hide()
-        elif event == "clear":
+        elif event == "-CLEAR-":
             trajectories = []  # サブ画面を閉じると軌跡もリセット
-            
+            current_trajectory = []  # クリアボタンを押すと現在の軌跡もリセット
+        elif event_sub == "-UPDATE_SLIDER_VALUE-":
+            slider_value = int(values_sub["-SLIDER-"])
+        elif event_sub == "-RED-":
+            col = [0, 0, 255]
+        elif event_sub == "-GREEN-":
+            col = [0, 255, 0]
+        elif event_sub == "-BLUE-":
+            col = [255, 0, 0]
+        elif event_sub == "-BLACK-":
+            col = [0, 0, 0]
+        elif event_sub == "-WHITE-":
+            col = [255, 255, 255]
 
         ret, frame = cap.read()
         frame = cv2.flip(frame, 1)  # 画像反転
@@ -87,16 +115,21 @@ with mp_hands.Hands(max_num_hands=1) as hands:
             distance = np.sqrt((cx - px) ** 2 + (cy - py) ** 2)
 
             if distance < 80:  # 閾値は適宜調整
-                if not trajectories or not trajectories[-1]:
-                    trajectories.append([(cx, cy)])  # 新しい軌跡の始点を追加
+                if not current_trajectory:
+                    current_trajectory.append((cx, cy))  # 新しい軌跡の始点を追加
                 else:
-                    trajectories[-1].append((cx, cy))  # 現在の軌跡に座標を追加
+                    current_trajectory.append((cx, cy))  # 現在の軌跡に座標を追加
             else:
-                trajectories.append([])  # 人差し指と親指が離れている場合は新しい軌跡を始める
+                if current_trajectory:
+                    trajectories.append((current_trajectory.copy(), slider_value, col))  # 軌跡と太さを保存
+                    current_trajectory = []  # 人差し指と親指が離れたら現在の軌跡をリセット
 
-        for trajectory in trajectories:
+        for trajectory, thickness, color in trajectories:
             if len(trajectory) > 1:
-                cv2.polylines(frame, [np.array(trajectory, dtype=np.int32)], isClosed=False, color=(255, 0, 0), thickness=5)
+                cv2.polylines(frame, [np.array(trajectory, dtype=np.int32)], isClosed=False, color=color, thickness=thickness)
+
+        if current_trajectory:
+            cv2.polylines(frame, [np.array(current_trajectory, dtype=np.int32)], isClosed=False, color=col, thickness=slider_value)
 
         # OpenCV画像をPySimpleGUIに反映
         disp_img = scale_to_height(frame, display_size[1])
