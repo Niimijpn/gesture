@@ -51,7 +51,8 @@ window_sub = sg.Window('サブ画面', layout_sub, finalize=True)
 window_sub.hide()  # 初めは非表示
 
 # カメラ初期化
-cap = cv2.VideoCapture(0)
+# cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(1)
 
 # 手の検出モデルの初期化
 with mp_hands.Hands(max_num_hands=1) as hands:
@@ -87,7 +88,9 @@ with mp_hands.Hands(max_num_hands=1) as hands:
             col = [255, 255, 255]
 
         ret, frame = cap.read()
-        frame = cv2.flip(frame, 1)  # 画像反転
+        
+
+        # frame = cv2.flip(frame, 1)  # 画像反転
 
         if not ret:
             continue
