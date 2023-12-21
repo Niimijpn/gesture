@@ -23,6 +23,7 @@ layout_main = [
     [sg.Button('サブ画面を表示', key="-SHOW_SUB_WINDOW-", size=(10, 1)), 
      sg.Exit(key="-EXIT-", size=(10, 1))],
     [sg.Button('CLEAR', key="-CLEAR-", size=(10, 1))],
+    [sg.Button('SAVE', key="-SAVE-", size=(10,1))],
 ]
 
 window = sg.Window('Hand Tracking Trajectory', layout_main, resizable=True, finalize=True)
@@ -52,7 +53,7 @@ window_sub.hide()  # 初めは非表示
 
 # カメラ初期化
 # cap = cv2.VideoCapture(1)
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 # 手の検出モデルの初期化
 with mp_hands.Hands(max_num_hands=1) as hands:
@@ -60,6 +61,7 @@ with mp_hands.Hands(max_num_hands=1) as hands:
     current_trajectory = []  # 現在の軌跡を管理するリスト
     slider_value = 5  # 初期値を設定
     col = [0,0,0]
+    filrneme = "out.png"
 
     while True:
         event, values = window.read(timeout=20)
@@ -85,12 +87,12 @@ with mp_hands.Hands(max_num_hands=1) as hands:
         elif event_sub == "-BLACK-":
             col = [0, 0, 0]
         elif event_sub == "-WHITE-":
-            col = [255, 255, 255]
+            col = [255, 255, 255]            
 
         ret, frame = cap.read()
         
 
-        # frame = cv2.flip(frame, 1)  # 画像反転
+        frame = cv2.flip(frame, 1)  # 画像反転
 
         if not ret:
             continue
@@ -138,6 +140,10 @@ with mp_hands.Hands(max_num_hands=1) as hands:
         disp_img = scale_to_height(frame, display_size[1])
         imgbytes = cv2.imencode('.png', disp_img)[1].tobytes()
         canvas_elem.update(data=imgbytes)
+        
+        
+        if event == "-SAVE-":
+            cv2.imwrite(filrneme, disp_img)
 
     window.close()
 
