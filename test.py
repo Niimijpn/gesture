@@ -20,11 +20,11 @@ mp_hands = mp.solutions.hands
 # PySimpleGUIの設定
 layout_main = [
     [sg.Image(filename='', key='-IMAGE-')],
-    [sg.Button('サブ画面を表示', key="-SHOW_SUB_WINDOW-", size=(10, 1)), 
-     sg.Exit(key="-EXIT-", size=(10, 1))],
-    [sg.Button('CLEAR', key="-CLEAR-", size=(10, 1))],
-    [sg.Button('SAVE', key="-SAVE-", size=(10,1))],
-    [sg.Button('UNDO', key="-UNDO-", size=(10,1))],
+    [sg.Button('サブ画面を表示', key="-SHOW_SUB_WINDOW-", size=(10, 1))], 
+    [sg.Exit(key="-EXIT-", size=(10, 1)),
+    sg.Button('CLEAR', key="-CLEAR-", size=(10, 1)),
+    sg.Button('SAVE', key="-SAVE-", size=(10,1)),
+    sg.Button('UNDO', key="-UNDO-", size=(10,1))],
 ]
 
 window = sg.Window('Hand Tracking Trajectory', layout_main, resizable=True, finalize=True)
@@ -57,11 +57,11 @@ window_sub.hide()  # 初めは非表示
 cap = cv2.VideoCapture(0)
 
 # 手の検出モデルの初期化
-with mp_hands.Hands(max_num_hands=1) as hands:
+with mp_hands.Hands(max_num_hands=2) as hands:
     trajectories = []  # 複数の軌跡を管理するリスト
     current_trajectory = []  # 現在の軌跡を管理するリスト
     slider_value = 5  # 初期値を設定
-    col = [0,0,0]
+    col = [0, 0, 0]
     filrneme = "out.png"
     undo_stack = []
 
@@ -111,28 +111,40 @@ with mp_hands.Hands(max_num_hands=1) as hands:
         rgb_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
 
         if results.multi_hand_landmarks:
-            hand_landmarks = results.multi_hand_landmarks[0]  # 最初に検出された手のみを使用
-
-            # 手の位置を取得
+            
+            # 手が複数検出されている場合、最初の手だけを取得
+            hand_landmarks = results.multi_hand_landmarks[0]  
+        
             h, w, _ = frame.shape
-            cx, cy = int(hand_landmarks.landmark[8].x * w), int(hand_landmarks.landmark[8].y * h)
-            px, py = int(hand_landmarks.landmark[4].x * w), int(hand_landmarks.landmark[4].y * h)
+            px, py = int(hand_landmarks.landmark[8].x * w), int(hand_landmarks.landmark[8].y * h)
+            
+            if len(results.multi_hand_landmarks) > 1:
+                
+                # 手が複数検出されている場合、次の手を取得
+                hand_landmarks_flag = results.multi_hand_landmarks[1]
 
-            cv2.circle(frame, (cx, cy), 20, (0, 255, 0), -1)
-            cv2.circle(frame, (px, py), 20, (0, 255, 0), -1)
-
-            # 人差し指と親指がくっついているか判定
-            distance = np.sqrt((cx - px) ** 2 + (cy - py) ** 2)
-
-            if distance < 80:  # 閾値は適宜調整
-                if not current_trajectory:
-                    current_trajectory.append((cx, cy))  # 新しい軌跡の始点を追加
+                cx, cy = int(hand_landmarks_flag.landmark[4].x * w), int(hand_landmarks_flag.landmark[4].y * h)
+                dx, dy = int(hand_landmarks_flag.landmark[8].x * w), int(hand_landmarks_flag.landmark[8].y * h)
+                
+               
+                
+                
+                distance = np.sqrt((cx - dx) ** 2 + (cy - dy) ** 2)
+                if distance < 60 :
+                    cv2.putText(frame, 'DRAW', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 2, 8)
+                    cv2.circle(frame, (px, py), 20, col, -1)
+                    cv2.circle(frame, (cx, cy), 20, (0, 255, 0), -1)
+                    if not current_trajectory:
+                        current_trajectory.append((px, py))  # 新しい軌跡の始点を追加
+                    else:
+                        current_trajectory.append((px, py))  # 現在の軌跡に座標を追加
                 else:
-                    current_trajectory.append((cx, cy))  # 現在の軌跡に座標を追加
-            else:
-                if current_trajectory:
-                    trajectories.append((current_trajectory.copy(), slider_value, col))  # 軌跡と太さを保存
-                    current_trajectory = []  # 人差し指と親指が離れたら現在の軌跡をリセット
+                    cv2.circle(frame, (px, py), 20, (0, 0, 0), -1)
+                    cv2.circle(frame, (cx, cy), 20, (0, 0, 0), -1)
+                    cv2.circle(frame, (dx, dy), 20, (0, 0, 0), -1)
+                    if current_trajectory:
+                        trajectories.append((current_trajectory.copy(), slider_value, col))  # 軌跡と太さを保存
+                        current_trajectory = []  # 人差し指と親指が離れたら現在の軌跡をリセット
 
         for trajectory, thickness, color in trajectories:
             if len(trajectory) > 1:
