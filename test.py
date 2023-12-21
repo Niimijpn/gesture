@@ -24,6 +24,7 @@ layout_main = [
      sg.Exit(key="-EXIT-", size=(10, 1))],
     [sg.Button('CLEAR', key="-CLEAR-", size=(10, 1))],
     [sg.Button('SAVE', key="-SAVE-", size=(10,1))],
+    [sg.Button('UNDO', key="-UNDO-", size=(10,1))],
 ]
 
 window = sg.Window('Hand Tracking Trajectory', layout_main, resizable=True, finalize=True)
@@ -62,6 +63,7 @@ with mp_hands.Hands(max_num_hands=1) as hands:
     slider_value = 5  # 初期値を設定
     col = [0,0,0]
     filrneme = "out.png"
+    undo_stack = []
 
     while True:
         event, values = window.read(timeout=20)
@@ -87,11 +89,14 @@ with mp_hands.Hands(max_num_hands=1) as hands:
         elif event_sub == "-BLACK-":
             col = [0, 0, 0]
         elif event_sub == "-WHITE-":
-            col = [255, 255, 255]            
+            col = [255, 255, 255]   
+        elif event == "-UNDO-":
+            if trajectories:
+                undo_stack.append(trajectories.pop())  # 最後に描かれた軌跡を取り除き、UNDOスタックに追加
+                window["-IMAGE-"].update(data=cv2.imencode('.png', scale_to_height(frame, display_size[1]))[1].tobytes())
 
         ret, frame = cap.read()
         
-
         frame = cv2.flip(frame, 1)  # 画像反転
 
         if not ret:
