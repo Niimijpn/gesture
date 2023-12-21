@@ -22,6 +22,12 @@
 *.pdf
 *.mp4
 
+doc
+*.png
+pySimleGUI
+sample
+pySimpleGUI_DemoPrg
+
 # Logs and databases #
 ######################
 *.log
