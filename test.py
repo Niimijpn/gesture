@@ -5,7 +5,6 @@ import platform
 import numpy as np
 from PIL import ImageFont, ImageDraw, Image
 
-
 # 画像リサイズ関数（高さが指定した値になるようにリサイズ (アスペクト比を固定)）
 def scale_to_height(img, height):
     h, w = img.shape[:2]
