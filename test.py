@@ -1,6 +1,7 @@
 import cv2
 import mediapipe as mp
 import PySimpleGUI as sg
+import platform
 import numpy as np
 from PIL import ImageFont, ImageDraw, Image
 
@@ -12,27 +13,6 @@ def scale_to_height(img, height):
     dst = cv2.resize(img, dsize=(width, height))
     return dst
 
-
-def putText_japanese(img, text, point, size, color):
-    #Notoフォントとする
-    try:
-        font = ImageFont.truetype("/Users/x22080xx/Library/Fonts/NotoSansJP-Regular.ttf", size)
-    except Exception as e:
-        print(f"Font loading error: {e}")
-
-    #imgをndarrayからPILに変換
-    img_pil = Image.fromarray(img)
-
-    #drawインスタンス生成
-    draw = ImageDraw.Draw(img_pil)
-
-    #テキスト描画
-    draw.text(point, text, fill=color, font=font)
-
-    #PILからndarrayに変換して返す
-    return np.array(img_pil)
-
-
 display_size = (400, 300)  # ディスプレイサイズ
 sg.theme("Default1")
 
@@ -43,20 +23,19 @@ mp_hands = mp.solutions.hands
 # PySimpleGUIの設定
 layout_main = [
     [sg.Image(filename='', key='-IMAGE-')],
-    [sg.Button('サブ画面を表示', key="-SHOW_SUB_WINDOW-", size=(10, 1))], 
-    [sg.Exit(key="-EXIT-", size=(10, 1)),
-    sg.Button('CLEAR', key="-CLEAR-", size=(10, 1)),
-    sg.Button('SAVE', key="-SAVE-", size=(10,1)),
-    sg.Button('UNDO', key="-UNDO-", size=(10,1))],
+    [sg.Button('SUB WINDOW', key="-SHOW_SUB_WINDOW-", size=(24, 1)),
+    sg.Button('UNDO', key="-UNDO-", size=(10,1)),
+    sg.Button('CLEAR', key="-CLEAR-", size=(10, 1))],
+    [sg.Button('SAVE', key="-SAVE-", size=(10,1)),
+    sg.Exit(key="-EXIT-", size=(10, 1))],
 ]
 
-window = sg.Window('Hand Tracking Trajectory', layout_main, resizable=True, finalize=True)
+window = sg.Window('お絵描きアプリ', layout_main, resizable=True, finalize=True)
 canvas_elem = window['-IMAGE-']
 canvas = canvas_elem.Widget
 
 layout_sub = [
-    [sg.Text('sub')],
-    [sg.Button('サブ画面を閉じる', key="-CLOSE_SUB_WINDOW-", size=(10, 1))],
+    [sg.Button('サブ画面を閉じる', key="-CLOSE_SUB_WINDOW-", size=(20, 1))],
     [sg.Slider(range=(1, 30),
                key="-SLIDER-",
                default_value=5,
@@ -77,7 +56,7 @@ window_sub.hide()  # 初めは非表示
 
 # カメラ初期化
 # cap = cv2.VideoCapture(1)
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 # 手の検出モデルの初期化
 with mp_hands.Hands(max_num_hands=2) as hands:
@@ -120,7 +99,7 @@ with mp_hands.Hands(max_num_hands=2) as hands:
 
         ret, frame = cap.read()
         
-        frame = cv2.flip(frame, 1)  # 画像反転
+#        frame = cv2.flip(frame, 1)  # 画像反転
 
         if not ret:
             continue
@@ -151,8 +130,16 @@ with mp_hands.Hands(max_num_hands=2) as hands:
                 
                 distance = np.sqrt((cx - dx) ** 2 + (cy - dy) ** 2)
                 if distance < 60 :
-                    cv2.putText(frame, 'DRAW', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 2, 8)
-                    putText_japanese(frame, "吾輩は猫である",  (10, 10), 2, (25, 131, 255))
+                    # # テキストの描画
+                    # text = "Hello, OpenCV!"
+                    # org = (50, 150)
+                    # fontFace = cv2.FONT_HERSHEY_SIMPLEX
+                    # fontScale = 1.5
+                    # color = (255, 255, 255)  # White color in BGR
+                    # thickness = 2
+
+                    # cv2.putText(frame, text, org, fontFace, fontScale, color, thickness)
+                    
                     cv2.circle(frame, (px, py), 20, col, -1)
                     cv2.circle(frame, (cx, cy), 20, (0, 255, 0), -1)
                     if not current_trajectory:
@@ -173,9 +160,10 @@ with mp_hands.Hands(max_num_hands=2) as hands:
 
         if current_trajectory:
             cv2.polylines(frame, [np.array(current_trajectory, dtype=np.int32)], isClosed=False, color=col, thickness=slider_value)
+                
 
         # OpenCV画像をPySimpleGUIに反映
-        disp_img = scale_to_height(frame, display_size[1])
+        disp_img = scale_to_height(frame, display_size[1])        
         imgbytes = cv2.imencode('.png', disp_img)[1].tobytes()
         canvas_elem.update(data=imgbytes)
         
