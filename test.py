@@ -15,6 +15,16 @@ def scale_to_height(img, height):
 display_size = (400, 300)  # ディスプレイサイズ
 sg.theme("Default1")
 
+# 画像リサイズ関数（高さが指定した値になるようにリサイズ (アスペクト比を固定)）
+def scale_to_height(img, height):
+    h, w = img.shape[:2]
+    width = round(w * (height / h))
+    dst = cv2.resize(img, dsize=(width, height))
+    return dst
+
+display_size = (400, 300)  # ディスプレイサイズ
+sg.theme("Default1")
+
 # MediaPipe初期化
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
@@ -30,11 +40,13 @@ layout_main = [
 ]
 
 window = sg.Window('お絵描きアプリ', layout_main, resizable=True, finalize=True)
+
 canvas_elem = window['-IMAGE-']
 canvas = canvas_elem.Widget
 
 layout_sub = [
     [sg.Button('サブ画面を閉じる', key="-CLOSE_SUB_WINDOW-", size=(20, 1))],
+
     [sg.Slider(range=(1, 30),
                key="-SLIDER-",
                default_value=5,
@@ -56,6 +68,7 @@ window_sub.hide()  # 初めは非表示
 # カメラ初期化
 # cap = cv2.VideoCapture(1)
 cap = cv2.VideoCapture(1)
+
 
 # 手の検出モデルの初期化
 with mp_hands.Hands(max_num_hands=2) as hands:
@@ -98,7 +111,8 @@ with mp_hands.Hands(max_num_hands=2) as hands:
 
         ret, frame = cap.read()
         
-#        frame = cv2.flip(frame, 1)  # 画像反転
+
+        frame = cv2.flip(frame, 1)  # 画像反転
 
         if not ret:
             continue
@@ -153,6 +167,7 @@ with mp_hands.Hands(max_num_hands=2) as hands:
                         trajectories.append((current_trajectory.copy(), slider_value, col))  # 軌跡と太さを保存
                         current_trajectory = []  # 人差し指と親指が離れたら現在の軌跡をリセット
 
+
         for trajectory, thickness, color in trajectories:
             if len(trajectory) > 1:
                 cv2.polylines(frame, [np.array(trajectory, dtype=np.int32)], isClosed=False, color=color, thickness=thickness)
@@ -163,6 +178,7 @@ with mp_hands.Hands(max_num_hands=2) as hands:
 
         # OpenCV画像をPySimpleGUIに反映
         disp_img = scale_to_height(frame, display_size[1])        
+
         imgbytes = cv2.imencode('.png', disp_img)[1].tobytes()
         canvas_elem.update(data=imgbytes)
         

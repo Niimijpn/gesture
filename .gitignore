@@ -1,26 +1,8 @@
-# Compiled source #
-###################
-*.com
-*.class
-*.dll
-*.exe
-*.o
-*.so
-
-# Packages #
-############
-# it's better to unpack these files and commit the raw source
-# git has its own built in compression methods
-*.7z
-*.dmg
-*.gz
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
-*.pdf
-*.mp4
+# dir #
+#####################
+pySimpleGUI_DemoPrg
+sample
+doc
 
 doc
 *.png
@@ -43,3 +25,11 @@ pySimpleGUI_DemoPrg
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# file #
+#####################
+*.png
+*.jpg
+*.jpeg
+
+
